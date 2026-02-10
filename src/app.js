@@ -37,7 +37,7 @@ app.post('/signup',async(req,res)=>{
         res.send("user added successfully")
     }
     catch(e){
-        res.status(400).send("cannot add user")
+        res.status(400).send("cannot add user"+e.message)
     }
 
 })
@@ -52,7 +52,7 @@ app.get('/user',async(req,res)=>{
         return res.send(user)
     }
     catch(e){
-        res.status(404).send("something went wrong")
+        res.status(404).send("something went wrong"+e.message)
     }
 })
 
@@ -64,7 +64,7 @@ app.get('/feed',async(req,res)=>{
         res.send(users);
     }
     catch(e){
-        res.status(404).send("something went wrong")
+        res.status(404).send("something went wrong"+e.message)
     }
 })
 
@@ -77,7 +77,7 @@ app.delete('/user',async(req,res)=>{
        return  res.send("user deleted ")
     }
     catch(e){
-        res.status(404).send("something went wrong")
+        res.status(404).send("something went wrong"+e.message)
     }
 })
 
@@ -89,8 +89,8 @@ app.patch('/user',async(req,res)=>{
         await User.findOneAndUpdate({emailId:req.body.emailId},req.body)
         res.send('user updated')
     }
-    catch{
-        res.status(404).send("something went wrong")
+    catch(e){
+        res.status(404).send("something went wrong"+e.message)
     }
 
 })
