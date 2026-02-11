@@ -1,7 +1,11 @@
 const express= require('express')
 require('dotenv').config();
 const dbConnect=require('./config/database')
-
+const {validateSignUpData}=require('./utils/validate')
+const bcrypt= require('bcrypt')
+const cookieParser=require('cookie-parser')
+const jwt = require('jsonwebtoken')
+const {userAuth}=require('./middlewares/auth')
 
 const User= require('./models/user')
 
@@ -17,6 +21,9 @@ app.use(express.json())
 // parse form data 
 app.use(express.urlencoded({ extended: true }));
 
+// parse cookies 
+app.use(cookieParser())
+
 
 
 
@@ -29,17 +36,67 @@ app.use(express.urlencoded({ extended: true }));
 
 // post signup
 app.post('/signup',async(req,res)=>{
+
+  
     
-    const data = req.body;
+
+    
+    
 
     try{
-        await User.create(data);
+          // step 1-> validate user  data 
+
+          validateSignUpData(req);
+
+
+          // step 2 -> encrypt the password
+        const {firstName,lastName,emailId,password}=req.body;
+          const hashedPassword= await bcrypt.hash(password,10);
+
+
+        
+        await User.create({firstName,lastName,emailId,password:hashedPassword});
         res.send("user added successfully")
     }
     catch(e){
         res.status(400).send("cannot add user"+e.message)
     }
 
+})
+
+
+
+// post login API->
+
+app.post('/login',async(req,res)=>{
+    try{
+        const { emailId, password} = req.body;
+
+        // step 1-> validate 
+
+
+
+
+        // step 1.1 -> get user by email , if not exists send invalid credentials 
+        const user = await User.findOne({emailId:emailId});
+
+        if(!user)return res.status(400).send("invalid credentials")
+
+
+        // step 2 -> compare password , if err , send invalid credentials 
+        const isValid= await bcrypt.compare(password,user.password);
+        if(!isValid)return res.status(400).send("Ivalid credentials")
+
+
+        // step 3 -> if valid password , generate token and login  
+        const token =  jwt.sign({emailId:emailId},process.env.JWTSECRET);
+        res.cookie('token',token,{httpOnly:true});
+
+        res.send("login successful")
+    }
+    catch(e){
+        res.status(400).send("ERROR : " + e.message );
+    }
 })
 
 
@@ -97,9 +154,10 @@ app.patch('/user/:emailId',async(req,res)=>{
     if(!isAllowed) throw new Error("update not allowed")
 
 
-        await User.findOneAndUpdate({emailId:req.params?.emailId},req.body,{
+       const user= await User.findOneAndUpdate({emailId:req.params?.emailId},req.body,{
             runValidators:true,
         })
+        if(!user)return res.status(400).send("user not found")
         res.send('user updated')
     }
     catch(e){
@@ -109,6 +167,14 @@ app.patch('/user/:emailId',async(req,res)=>{
 })
 
 
+// get / profile -> get user profile
+app.get('/profile',userAuth,async(req,res)=>{
+
+    const {user}=req;
+
+    res.send(user);
+
+})
 
 
 
